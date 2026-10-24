@@ -4,6 +4,8 @@ services:
     container_name: neverdie-bot
     restart: unless-stopped
     env_file: .env
+    depends_on:
+      - lavalink
     volumes:
       - bot-data:/data
     # Bergabung ke jaringan Docker milik 9router, panggil lewat nama container.
@@ -27,6 +29,22 @@ services:
     mem_limit: 256m
     cpus: 0.5
 
+  # Pemutar musik (Lavalink). Hanya bisa diakses bot lewat jaringan Docker, tidak dibuka ke luar.
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: neverdie-lavalink
+    restart: unless-stopped
+    environment:
+      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-}
+      _JAVA_OPTIONS: -Xmx384m
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - lavalink-plugins:/opt/Lavalink/plugins
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 640m
+    cpus: 1.0
+
 networks:
   router:
     external: true
@@ -34,3 +52,4 @@ networks:
 
 volumes:
   bot-data:
+  lavalink-plugins:

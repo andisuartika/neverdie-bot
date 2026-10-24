@@ -39,6 +39,9 @@ export function buildHelpFields({ tier, used, cfg = config }) {
           '`/reset` hapus ingatan percakapan, mulai topik baru',
           '`/usage` lihat sisa jatah hari ini',
           '`/ping` cek bot hidup',
+          ...(cfg.music?.enabled
+            ? ['`/play` `/skip` `/pause` `/queue` `/volume` `/stop` musik YouTube (masuk voice dulu)']
+            : []),
         ].join('\n'),
       },
       {

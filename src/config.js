@@ -59,6 +59,20 @@ export const config = {
   rulesChannelId: process.env.RULES_CHANNEL_ID || '',
   rolesChannelId: process.env.ROLES_CHANNEL_ID || '',
 
+  // Musik YouTube lewat Lavalink (container terpisah). MUSIC=on untuk menyalakan.
+  music: {
+    enabled: /^(on|true|1|yes)$/i.test(process.env.MUSIC || ''),
+    lavalinkUrl: process.env.LAVALINK_URL || 'lavalink:2333', // host:port di jaringan Docker
+    lavalinkPassword: process.env.LAVALINK_PASSWORD || '',
+    channelIds: list(process.env.MUSIC_CHANNEL_IDS), // kosong = perintah musik boleh di mana saja
+    maxQueue: num(process.env.MUSIC_MAX_QUEUE, 30),
+    maxTrackMin: num(process.env.MUSIC_MAX_TRACK_MIN, 15),
+    idleLeaveSec: num(process.env.MUSIC_IDLE_LEAVE_SEC, 180), // keluar jika antrean habis
+    aloneLeaveSec: num(process.env.MUSIC_ALONE_LEAVE_SEC, 120), // keluar jika sendirian di voice
+    defaultVolume: num(process.env.MUSIC_DEFAULT_VOLUME, 60),
+    maxVolume: num(process.env.MUSIC_MAX_VOLUME, 100),
+  },
+
   // Log pertanyaan (untuk /stats dan penilaian) disimpan sekian hari lalu dihapus.
   logRetentionDays: num(process.env.ASK_LOG_RETENTION_DAYS, 30),
   backupKeep: num(process.env.BACKUP_KEEP, 7),

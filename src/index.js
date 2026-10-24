@@ -10,6 +10,7 @@ import { startMaintenance } from './backup.js';
 import { registerModLog } from './modlog.js';
 import { sendWelcome } from './welcome.js';
 import { handleButton } from './buttons.js';
+import { createMusic } from './music/manager.js';
 import { commands } from './commands/index.js';
 
 const db = openDb();
@@ -19,6 +20,7 @@ const byName = new Map(commands.map((c) => [c.data.name, c]));
 // GuildMessages (tanpa isi pesan) hanya untuk log "pesan dihapus". GuildMembers adalah intent
 // privileged: aktif hanya jika MEMBER_EVENTS=on (nyalakan juga di Developer Portal).
 const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages];
+if (config.music.enabled) intents.push(GatewayIntentBits.GuildVoiceStates);
 if (config.memberEvents) intents.push(GatewayIntentBits.GuildMembers);
 const client = new Client({ intents, partials: [Partials.Message, Partials.GuildMember] });
 
@@ -30,7 +32,9 @@ const alerter = createAlerter({
     await ch?.send({ content, allowedMentions: { parse: [] } });
   },
 });
+const music = config.music.enabled ? createMusic(client) : null;
 const ctx = {
+  music,
   usage: createUsageStore(db),
   memory: createMemoryStore(db),
   askLog,
@@ -47,6 +51,13 @@ registerModLog(client, {
     }
   },
 });
+
+if (music) {
+  client.on(Events.VoiceStateUpdate, (oldS, newS) => {
+    const g = newS.guild ?? oldS.guild;
+    if (g?.id === config.discord.guildId) music.checkAlone(g);
+  });
+}
 
 client.once(Events.ClientReady, async (c) => {
   console.log(`[bot] masuk sebagai ${c.user.tag}`);
@@ -92,8 +103,9 @@ setInterval(() => {
 
 startMaintenance(db, askLog);
 
-const stop = () => {
+const stop = async () => {
   console.log('[bot] berhenti...');
+  await music?.shutdown().catch(() => {});
   client.destroy();
   db.close();
   process.exit(0);

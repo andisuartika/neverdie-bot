@@ -58,3 +58,10 @@ npm ci && npm test
 - **Log moderasi** ke `STAFF_LOG_CHANNEL_ID`: member masuk (menandai akun baru < 7 hari), keluar/kick/ban (beserta pelakunya), perubahan role (beserta pelakunya, perubahan dari panel tidak dicatat), pesan dihapus (isi pesan **tidak** dicatat).
 - **Intent Server Members:** sambutan, log masuk/keluar, dan log role butuh intent privileged. Nyalakan di Developer Portal (Bot → Privileged Gateway Intents → Server Members Intent) lalu isi `MEMBER_EVENTS=on`. Tanpa itu bot tetap jalan normal; hanya log pesan dihapus yang aktif.
 - **Izin bot yang dibutuhkan:** View Channels, Send Messages, Embed Links, Attach Files, Read Message History, Manage Roles, View Audit Log.
+
+## Musik YouTube (Lavalink)
+
+- Menjalankan: isi `MUSIC=on` dan `LAVALINK_PASSWORD` (acak, panjang) di `.env`, lalu `bash update.sh`.
+- Perintah: `/play`, `/skip`, `/pause`, `/queue`, `/volume`, `/stop`. Pengguna harus berada di voice channel.
+- Lavalink berjalan sebagai container `neverdie-lavalink` (tidak membuka port ke luar). Plugin YouTube diunduh otomatis saat pertama jalan (butuh internet).
+- Jika YouTube mulai menolak (error "load_error"), perbarui versi `youtube-plugin` di `lavalink/application.yml`.
