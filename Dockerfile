@@ -1,6 +1,11 @@
 FROM node:22-bookworm-slim
 WORKDIR /app
 
+# Font untuk kartu sambutan (gambar digambar di dalam bot)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 

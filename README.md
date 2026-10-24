@@ -51,3 +51,10 @@ npm ci && npm test
 - **Cadangan database:** otomatis harian di `/data/backup` (volume `bot-data`), simpan `BACKUP_KEEP` terakhir. Salin keluar: `sudo docker cp neverdie-bot:/data/backup ./backup`.
 - **Healthcheck dan penjaga:** `docker ps` menampilkan status healthy; bot keluar sendiri bila terputus dari Discord > 3 menit lalu Docker menghidupkannya kembali.
 - **Privasi log:** hanya pertanyaan (bukan jawaban) disimpan di `ask_log` selama `ASK_LOG_RETENTION_DAYS` hari (default 30).
+
+## Panel role, sambutan, log moderasi
+- **`/panel-role` (dev/admin):** mengirim panel tombol ambil/lepas role di channel tempat perintah dijalankan. Role yang belum ada dibuat otomatis. Role dikenali lewat **nama** (tanpa emoji): Programmer, Mobile Dev, Web Dev, FPS Player, Mobile Gamer, Santai & Survival. Role dengan izin berbahaya (Administrator, Manage Roles, Ban, dll.) tidak pernah diberikan lewat panel, dan role harus berada di bawah role NV Bot.
+- **Sambutan:** saat ada member baru, bot mengirim kartu gambar + teks petunjuk di `WELCOME_CHANNEL_ID`. Matikan sambutan bot lain (mis. Koya) agar tidak dobel.
+- **Log moderasi** ke `STAFF_LOG_CHANNEL_ID`: member masuk (menandai akun baru < 7 hari), keluar/kick/ban (beserta pelakunya), perubahan role (beserta pelakunya, perubahan dari panel tidak dicatat), pesan dihapus (isi pesan **tidak** dicatat).
+- **Intent Server Members:** sambutan, log masuk/keluar, dan log role butuh intent privileged. Nyalakan di Developer Portal (Bot → Privileged Gateway Intents → Server Members Intent) lalu isi `MEMBER_EVENTS=on`. Tanpa itu bot tetap jalan normal; hanya log pesan dihapus yang aktif.
+- **Izin bot yang dibutuhkan:** View Channels, Send Messages, Embed Links, Attach Files, Read Message History, Manage Roles, View Audit Log.

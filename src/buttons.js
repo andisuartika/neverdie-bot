@@ -1,10 +1,12 @@
 import { MessageFlags } from 'discord.js';
 import { handleAsk, feedbackRow } from './commands/ask.js';
+import { handleRoleButton } from './panel.js';
 
 const ID = /^nv:(up|down|redo):(\d+)$/;
 
 // Menangani tombol 👍 👎 🔄 di bawah jawaban. Hanya penanya asli yang boleh menekan.
 export async function handleButton(interaction, ctx) {
+  if (interaction.customId.startsWith('nv:role:')) return handleRoleButton(interaction);
   const m = ID.exec(interaction.customId);
   if (!m) return;
   const [, action, idStr] = m;

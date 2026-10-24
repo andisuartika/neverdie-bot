@@ -52,6 +52,13 @@ export const config = {
   // Channel staf untuk peringatan otomatis (opsional). Bot butuh izin kirim pesan di sana.
   staffLogChannelId: process.env.STAFF_LOG_CHANNEL_ID || '',
 
+  // Fitur yang butuh intent "Server Members" (sambutan, log masuk/keluar, log role).
+  // Nyalakan intent-nya di Developer Portal (Bot -> Privileged Gateway Intents) LALU isi MEMBER_EVENTS=on.
+  memberEvents: /^(on|true|1|yes)$/i.test(process.env.MEMBER_EVENTS || ''),
+  welcomeChannelId: process.env.WELCOME_CHANNEL_ID || '',
+  rulesChannelId: process.env.RULES_CHANNEL_ID || '',
+  rolesChannelId: process.env.ROLES_CHANNEL_ID || '',
+
   // Log pertanyaan (untuk /stats dan penilaian) disimpan sekian hari lalu dihapus.
   logRetentionDays: num(process.env.ASK_LOG_RETENTION_DAYS, 30),
   backupKeep: num(process.env.BACKUP_KEEP, 7),

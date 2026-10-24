@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config } from './config.js';
 import { openDb, createUsageStore } from './db.js';
 import { createMemoryStore } from './memory.js';
@@ -7,6 +7,8 @@ import { createAskLog } from './asklog.js';
 import { createLimiter } from './limiter.js';
 import { createAlerter } from './alerts.js';
 import { startMaintenance } from './backup.js';
+import { registerModLog } from './modlog.js';
+import { sendWelcome } from './welcome.js';
 import { handleButton } from './buttons.js';
 import { commands } from './commands/index.js';
 
@@ -14,7 +16,11 @@ const db = openDb();
 const byName = new Map(commands.map((c) => [c.data.name, c]));
 
 // Hanya slash command dan tombol: tidak perlu intent "Message Content" sama sekali.
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// GuildMessages (tanpa isi pesan) hanya untuk log "pesan dihapus". GuildMembers adalah intent
+// privileged: aktif hanya jika MEMBER_EVENTS=on (nyalakan juga di Developer Portal).
+const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages];
+if (config.memberEvents) intents.push(GatewayIntentBits.GuildMembers);
+const client = new Client({ intents, partials: [Partials.Message, Partials.GuildMember] });
 
 const askLog = createAskLog(db);
 const alerter = createAlerter({
@@ -32,8 +38,24 @@ const ctx = {
   alerter,
 };
 
-client.once(Events.ClientReady, (c) => {
+registerModLog(client, {
+  welcome: async (member) => {
+    try {
+      await sendWelcome(client, member);
+    } catch (err) {
+      console.error('[welcome] gagal:', err?.message ?? err);
+    }
+  },
+});
+
+client.once(Events.ClientReady, async (c) => {
   console.log(`[bot] masuk sebagai ${c.user.tag}`);
+  if (config.memberEvents) {
+    // Isi cache member agar perubahan role bisa dibandingkan dengan keadaan sebelumnya.
+    await c.guilds.cache.get(config.discord.guildId)?.members.fetch().catch((e) =>
+      console.error('[bot] gagal memuat member:', e?.message ?? e),
+    );
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
