@@ -86,3 +86,15 @@ export function fitDiscord(text, max = 1850) {
   if (text.length <= max) return text;
   return text.slice(0, max - 1).trimEnd() + '…';
 }
+
+// Coba model utama; jika gagal dan ada model cadangan, coba model cadangan.
+// Mengembalikan { text, model } supaya model yang benar-benar dipakai tercatat.
+export async function askWithFallback({ model, fallback, ...rest }) {
+  try {
+    return { text: await askAI({ model, ...rest }), model };
+  } catch (err) {
+    if (!(err instanceof AiError) || !fallback || fallback === model) throw err;
+    console.error(`[ai] model utama gagal (${err.message}), mencoba cadangan`);
+    return { text: await askAI({ model: fallback, ...rest }), model: fallback };
+  }
+}

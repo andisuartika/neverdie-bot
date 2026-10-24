@@ -42,7 +42,19 @@ export const config = {
     maxQuestionChars: num(process.env.AI_MAX_QUESTION_CHARS, 1000),
     // Channel yang memakai mode "teknis" (jawaban lebih teliti, cocok untuk kode).
     technicalChannelIds: list(process.env.AI_TECH_CHANNEL_IDS),
+    // Model cadangan (nama persis di 9router). Kosong = tidak dipakai.
+    fallbackModel: process.env.AI_MODEL_FALLBACK || '',
+    // Berapa permintaan AI yang diproses bersamaan, dan panjang antrean maksimum.
+    concurrency: num(process.env.AI_CONCURRENCY, 2),
+    maxQueue: num(process.env.AI_MAX_QUEUE, 10),
   },
+
+  // Channel staf untuk peringatan otomatis (opsional). Bot butuh izin kirim pesan di sana.
+  staffLogChannelId: process.env.STAFF_LOG_CHANNEL_ID || '',
+
+  // Log pertanyaan (untuk /stats dan penilaian) disimpan sekian hari lalu dihapus.
+  logRetentionDays: num(process.env.ASK_LOG_RETENTION_DAYS, 30),
+  backupKeep: num(process.env.BACKUP_KEEP, 7),
 
   // Ingatan percakapan singkat per pengguna per channel (hapus dengan /reset).
   memory: {

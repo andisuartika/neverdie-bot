@@ -41,3 +41,13 @@ npm ci && npm test
 - **Ingatan singkat:** NV Bot mengingat beberapa tanya-jawab terakhir per orang per channel (default 3 tanya-jawab, lupa setelah 30 menit). `/reset` menghapusnya.
 - **Mode teknis:** channel di `AI_TECH_CHANNEL_IDS` (mis. debug-help) memakai prompt khusus kode dan suhu lebih rendah.
 - **Pengaman:** mention (`@everyone`, `<@id>`) dinetralkan, teks "pikiran" model dibuang, prompt tidak bisa dibocorkan.
+
+## Keandalan dan pemantauan
+- **Tombol di jawaban:** 👍 👎 untuk menilai, 🔄 untuk menjawab ulang (hanya penanya asli yang bisa menekan; 🔄 memakai jatah).
+- **`/stats` (staf):** permintaan hari ini, pengguna unik, rata-rata waktu jawab, persen gagal, kode gagal, penilaian, pemakai teratas, kuota global.
+- **Antrean:** `AI_CONCURRENCY` permintaan diproses bersamaan (default 2), antrean maksimum `AI_MAX_QUEUE`.
+- **Model cadangan:** isi `AI_MODEL_FALLBACK`; dipakai otomatis jika model utama gagal.
+- **Notifikasi staf:** isi `STAFF_LOG_CHANNEL_ID`; bot memberi tahu bila AI gagal 3x berturut-turut dan saat pulih.
+- **Cadangan database:** otomatis harian di `/data/backup` (volume `bot-data`), simpan `BACKUP_KEEP` terakhir. Salin keluar: `sudo docker cp neverdie-bot:/data/backup ./backup`.
+- **Healthcheck dan penjaga:** `docker ps` menampilkan status healthy; bot keluar sendiri bila terputus dari Discord > 3 menit lalu Docker menghidupkannya kembali.
+- **Privasi log:** hanya pertanyaan (bukan jawaban) disimpan di `ask_log` selama `ASK_LOG_RETENTION_DAYS` hari (default 30).

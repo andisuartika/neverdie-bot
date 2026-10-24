@@ -24,6 +24,22 @@ export function openDb(path = config.dbPath) {
       ts         INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_memory_user ON chat_memory (user_id, channel_id, ts);
+    CREATE TABLE IF NOT EXISTS ask_log (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts         INTEGER NOT NULL,
+      day        TEXT NOT NULL,
+      user_id    TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      tier       TEXT NOT NULL,
+      mode       TEXT NOT NULL,
+      model      TEXT,
+      ok         INTEGER NOT NULL,
+      latency_ms INTEGER,
+      error      TEXT,
+      rating     INTEGER,
+      question   TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ask_day ON ask_log (day);
   `);
   return db;
 }
