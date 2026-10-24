@@ -127,3 +127,14 @@ test('askAI mengirim riwayat, prompt teknis, dan membersihkan mention', async ()
   assert.ok(!/<think>/.test(out) && !out.includes('@everyone') && !out.includes('<@123>'));
   assert.equal(cleanAnswer('biasa saja'), 'biasa saja');
 });
+
+test('/help: isi dinamis sesuai tingkat dan pengaturan', async () => {
+  const { buildHelpFields } = await import('../src/commands/help.js');
+  const { config: cfg } = await import('../src/config.js');
+  const h = buildHelpFields({ tier: 'moderator', used: 7, cfg });
+  const all = JSON.stringify(h);
+  assert.match(all, /7\/50/); // jatah moderator
+  assert.match(all, /← kamu/);
+  assert.match(all, /∞/); // dev tanpa batas
+  assert.ok(h.fields.every((f) => f.value.length <= 1024 && f.name.length <= 256));
+});
