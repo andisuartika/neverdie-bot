@@ -59,7 +59,14 @@ export function createMusic(client, cfg = config.music) {
       if (e.reason === 'finished' || e.reason === 'loadFailed') playNext(guildId);
     });
     player.on('stuck', () => playNext(guildId));
-    player.on('exception', (e) => console.error('[music] exception:', e?.exception?.message ?? e));
+    player.on('exception', async (e) => {
+      console.error('[music] exception:', e?.exception?.message ?? e);
+      // Beri tahu di channel teks, supaya tidak diam saja ketika YouTube menolak.
+      const st = states.get(guildId);
+      const ch = st?.textChannelId ? await client.channels.fetch(st.textChannelId).catch(() => null) : null;
+      const title = e?.track?.info?.title ?? st?.queue.current?.title ?? 'lagu';
+      await ch?.send({ content: `⚠️ Gagal memutar **${title.slice(0, 100)}** (YouTube menolak). Dilewati.`, allowedMentions: { parse: [] } }).catch(() => {});
+    });
     player.on('closed', (e) => {
       console.error('[music] koneksi voice ditutup:', e?.code);
       destroy(guildId);
@@ -75,7 +82,7 @@ export function createMusic(client, cfg = config.music) {
     state: (guildId) => states.get(guildId),
 
     // Mengembalikan { ok, ... } supaya perintah tinggal menampilkan hasilnya.
-    async enqueue({ guildId, voiceChannelId, shardId, query, requester }) {
+    async enqueue({ guildId, voiceChannelId, shardId, query, requester, textChannelId }) {
       if (!ready) return { ok: false, reason: 'node_down' };
       const id = toIdentifier(query);
       if (!id.ok) return { ok: false, reason: id.reason };
@@ -105,6 +112,7 @@ export function createMusic(client, cfg = config.music) {
         states.set(guildId, st);
         wire(guildId, player);
       }
+      if (textChannelId) st.textChannelId = textChannelId;
       const added = st.queue.add(tracks);
       if (!added) return { ok: false, reason: 'queue_full' };
       const startsNow = !st.queue.current && !st.player.track;

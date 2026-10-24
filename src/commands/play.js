@@ -29,6 +29,7 @@ export async function execute(interaction, { music }) {
     shardId: interaction.guild.shardId,
     query: interaction.options.getString('lagu', true),
     requester: interaction.user.id,
+    textChannelId: interaction.channelId,
   });
   if (!r.ok) return interaction.editReply({ content: REASONS[r.reason] ?? 'Gagal memutar lagu.', allowedMentions: { parse: [] } });
   const t = r.first;
