@@ -1,0 +1,30 @@
+services:
+  bot:
+    build: .
+    container_name: neverdie-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - bot-data:/data
+    # Bergabung ke jaringan Docker milik 9router, panggil lewat nama container.
+    networks:
+      - default
+      - router
+    # Pengamanan dasar
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 256m
+    cpus: 0.5
+
+networks:
+  router:
+    external: true
+    name: 9router_default
+
+volumes:
+  bot-data:
