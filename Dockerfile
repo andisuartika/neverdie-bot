@@ -11,7 +11,8 @@ RUN apt-get update \
 # (YouTube sering berubah; yt-dlp diperbarui hampir setiap hari).
 ARG YTDLP_REFRESH=0
 RUN echo "yt-dlp refresh: $YTDLP_REFRESH" \
- && curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+ && curl -fsSL --connect-timeout 20 --max-time 180 --retry 6 --retry-delay 5 --retry-all-errors \
+      https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
  && chmod 755 /usr/local/bin/yt-dlp \
  && python3 /usr/local/bin/yt-dlp --version
 
