@@ -1,11 +1,11 @@
-// Logika murni (tanpa Discord/Lavalink) supaya mudah diuji.
+// Logika murni (tanpa Discord/yt-dlp) supaya mudah diuji.
 
 const HOSTS = new Set([
   'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be',
   'soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com', 'on.soundcloud.com',
 ]);
 
-// Mengembalikan { ok, identifier } untuk dikirim ke Lavalink, atau { ok:false, reason }.
+// Mengembalikan { ok, identifier } untuk dikirim ke yt-dlp, atau { ok:false, reason }.
 // Hanya YouTube dan SoundCloud yang diterima: tautan lain ditolak (mencegah bot dipakai membuka alamat sembarang).
 // source: 'youtube' (ytsearch) atau 'soundcloud' (scsearch) untuk pencarian judul.
 export function toIdentifier(input, source = 'youtube') {
@@ -33,7 +33,7 @@ export const fmtDuration = (ms) => {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 };
 
-// Antrean per server. Item: { encoded, title, author, length, uri, requester }
+// Antrean per server. Item: { title, author, length, uri, requester }
 export class TrackQueue {
   constructor(max = 30) {
     this.max = max;
@@ -60,26 +60,27 @@ export class TrackQueue {
   }
 }
 
-// Pilih lagu dari hasil Lavalink dan saring yang tidak layak.
-export function pickTracks(result, { maxTrackMs, isUrl, requester }) {
-  if (!result) return { tracks: [], skipped: 0, error: 'no_result' };
-  const { loadType, data } = result;
-  if (loadType === 'error') return { tracks: [], skipped: 0, error: 'load_error' };
-  if (loadType === 'empty') return { tracks: [], skipped: 0, error: 'empty' };
-  let raw;
-  if (loadType === 'track') raw = [data];
-  else if (loadType === 'playlist') raw = data.tracks;
-  else if (loadType === 'search') raw = isUrl ? data : data.slice(0, 1);
-  else raw = [];
+// Saring hasil yt-dlp (entri ternormalisasi) dan beri bentuk item antrean.
+export function filterTracks(entries, { maxTrackMs, requester, single = false }) {
+  const list = single ? entries.slice(0, 1) : entries;
   let skipped = 0;
   const tracks = [];
-  for (const t of raw) {
-    const i = t.info;
-    if (i.isStream || i.length > maxTrackMs) {
+  for (const e of list) {
+    if (!e?.uri || e.live || (e.length != null && e.length > maxTrackMs)) {
       skipped++;
       continue;
     }
-    tracks.push({ encoded: t.encoded, title: i.title, author: i.author, length: i.length, uri: i.uri, requester });
+    tracks.push({ title: e.title, author: e.author, length: e.length ?? 0, uri: e.uri, requester });
   }
-  return { tracks, skipped, error: tracks.length ? null : 'filtered' };
+  return { tracks, skipped, error: tracks.length ? null : list.length ? 'filtered' : 'empty' };
+}
+
+// Tautan daftar putar (bukan video yang kebetulan membawa &list=) boleh dimasukkan beberapa lagu sekaligus.
+export function isPlaylistUrl(identifier) {
+  try {
+    const u = new URL(identifier);
+    return /\/playlist$/.test(u.pathname) || /\/sets\//.test(u.pathname);
+  } catch {
+    return false;
+  }
 }

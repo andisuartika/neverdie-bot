@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toIdentifier, TrackQueue, pickTracks, fmtDuration } from '../src/music/queue.js';
+import { toIdentifier, TrackQueue, filterTracks, isPlaylistUrl, fmtDuration } from '../src/music/queue.js';
 
 test('toIdentifier: judul jadi ytsearch, hanya YouTube yang lolos', () => {
   assert.equal(toIdentifier('dewa 19 kangen').identifier, 'ytsearch:dewa 19 kangen');
@@ -26,20 +26,23 @@ test('TrackQueue: batas antrean dan urutan', () => {
   assert.equal(q.next(), null);
 });
 
-const tr = (title, length, isStream = false) => ({ encoded: title, info: { title, author: 'a', length, isStream, uri: 'u' } });
+const ent = (title, length, live = false) => ({ title, author: 'a', length, uri: `https://x/${title}`, live });
 
-test('pickTracks: search ambil 1, URL playlist ambil semua, saring stream/panjang', () => {
-  const opt = { maxTrackMs: 60_000, isUrl: false, requester: 'U' };
-  const search = { loadType: 'search', data: [tr('a', 1000), tr('b', 1000)] };
-  assert.equal(pickTracks(search, opt).tracks.length, 1);
-  const pl = { loadType: 'playlist', data: { tracks: [tr('a', 1000), tr('live', 1, true), tr('long', 999_999)] } };
-  const r = pickTracks(pl, { ...opt, isUrl: true });
-  assert.equal(r.tracks.length, 1);
+test('filterTracks: saring live/panjang, pencarian ambil 1, playlist ambil semua', () => {
+  const opt = { maxTrackMs: 60_000, requester: 'U' };
+  assert.equal(filterTracks([ent('a', 1000), ent('b', 1000)], { ...opt, single: true }).tracks.length, 1);
+  const r = filterTracks([ent('a', 1000), ent('live', 1, true), ent('long', 999_999), ent('n', null)], opt);
+  assert.equal(r.tracks.length, 2); // 'a' dan 'n' (durasi tidak diketahui tetap lolos)
   assert.equal(r.skipped, 2);
   assert.equal(r.tracks[0].requester, 'U');
-  assert.equal(pickTracks({ loadType: 'empty', data: {} }, opt).error, 'empty');
-  assert.equal(pickTracks({ loadType: 'error', data: {} }, opt).error, 'load_error');
-  assert.equal(pickTracks({ loadType: 'track', data: tr('x', 999_999) }, opt).error, 'filtered');
+  assert.equal(filterTracks([], opt).error, 'empty');
+  assert.equal(filterTracks([ent('long', 999_999)], opt).error, 'filtered');
+});
+
+test('isPlaylistUrl: hanya daftar putar sungguhan', () => {
+  assert.equal(isPlaylistUrl('https://www.youtube.com/playlist?list=PL1'), true);
+  assert.equal(isPlaylistUrl('https://soundcloud.com/a/sets/b'), true);
+  assert.equal(isPlaylistUrl('https://www.youtube.com/watch?v=x&list=PL1'), false);
 });
 
 test('fmtDuration', () => {

@@ -59,11 +59,9 @@ export const config = {
   rulesChannelId: process.env.RULES_CHANNEL_ID || '',
   rolesChannelId: process.env.ROLES_CHANNEL_ID || '',
 
-  // Musik YouTube lewat Lavalink (container terpisah). MUSIC=on untuk menyalakan.
+  // Musik lewat yt-dlp + ffmpeg di dalam bot. MUSIC=on untuk menyalakan.
   music: {
     enabled: /^(on|true|1|yes)$/i.test(process.env.MUSIC || ''),
-    lavalinkUrl: process.env.LAVALINK_URL || 'lavalink:2333', // host:port di jaringan Docker
-    lavalinkPassword: process.env.LAVALINK_PASSWORD || '',
     channelIds: list(process.env.MUSIC_CHANNEL_IDS), // kosong = perintah musik boleh di mana saja
     // Sumber pencarian judul: youtube atau soundcloud (tanpa login, katalog lebih terbatas)
     source: /^soundcloud$/i.test(process.env.MUSIC_SOURCE || '') ? 'soundcloud' : 'youtube',

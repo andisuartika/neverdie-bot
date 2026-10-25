@@ -8,12 +8,13 @@ export const data = new SlashCommandBuilder()
   .addStringOption((o) => o.setName('lagu').setDescription('Judul lagu atau tautan YouTube').setRequired(true).setMaxLength(200));
 
 const REASONS = {
-  node_down: 'Pemutar musik sedang tidak tersedia. Coba lagi sebentar lagi.',
+  node_down: 'Pemutar musik belum siap. Coba lagi sebentar lagi.',
+  voice_failed: 'Bot gagal masuk ke voice channel. Cek izin Connect dan Speak.',
   not_youtube: 'Hanya tautan YouTube atau SoundCloud yang didukung. Atau ketik judul lagunya.',
   bad_url: 'Tautannya tidak valid.',
   empty: 'Lagu tidak ditemukan. Coba judul yang lain.',
   filtered: 'Lagu tidak bisa dimasukkan (siaran langsung atau terlalu panjang).',
-  load_error: 'YouTube menolak atau gagal dimuat. Coba lagu lain.',
+  load_error: 'Lagu tidak bisa dicari atau dimuat. Coba judul lain atau tautan langsung.',
   no_result: 'Lagu tidak ditemukan.',
   other_channel: 'Bot sedang dipakai di voice channel lain.',
   queue_full: 'Antrean penuh.',
@@ -24,9 +25,8 @@ export async function execute(interaction, { music }) {
   if (err) return interaction.reply(eph(err));
   await interaction.deferReply();
   const r = await music.enqueue({
-    guildId: interaction.guildId,
+    guild: interaction.guild,
     voiceChannelId: interaction.member.voice.channel.id,
-    shardId: interaction.guild.shardId,
     query: interaction.options.getString('lagu', true),
     requester: interaction.user.id,
     textChannelId: interaction.channelId,

@@ -1,76 +1,128 @@
-import { Shoukaku, Connectors } from 'shoukaku';
+import {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  entersState,
+  AudioPlayerStatus,
+  VoiceConnectionStatus,
+  NoSubscriberBehavior,
+  StreamType,
+} from '@discordjs/voice';
 import { config } from '../config.js';
-import { TrackQueue, toIdentifier, pickTracks } from './queue.js';
+import { TrackQueue, toIdentifier, filterTracks, isPlaylistUrl } from './queue.js';
+import * as ytdlp from './ytdlp.js';
 
+// Pemutar musik: yt-dlp (unduh audio) -> ffmpeg (PCM) -> @discordjs/voice.
 // Satu manajer untuk seluruh bot. Status per server disimpan di `states`.
-export function createMusic(client, cfg = config.music) {
-  const states = new Map(); // guildId -> { player, queue, channelId, volume, timer, aloneTimer }
+export function createMusic(client, cfg = config.music, deps = ytdlp) {
+  const states = new Map(); // guildId -> { connection, player, queue, channelId, volume, resource, handle, ... }
   let ready = false;
 
-  const shoukaku = new Shoukaku(
-    new Connectors.DiscordJS(client),
-    [{ name: 'main', url: cfg.lavalinkUrl, auth: cfg.lavalinkPassword }],
-    { resume: true, resumeTimeout: 30, reconnectTries: 10, reconnectInterval: 5, moveOnDisconnect: false },
-  );
-  shoukaku.on('ready', (name) => {
-    ready = true;
-    console.log(`[music] Lavalink "${name}" terhubung`);
-  });
-  shoukaku.on('disconnect', (name) => {
-    ready = [...shoukaku.nodes.values()].some((n) => n.state === 1);
-    console.error(`[music] Lavalink "${name}" terputus`);
-  });
-  shoukaku.on('error', (name, err) => console.error(`[music] node ${name}:`, err?.message ?? err));
+  deps
+    .version()
+    .then((v) => {
+      ready = true;
+      console.log(`[music] yt-dlp ${v} siap`);
+    })
+    .catch((e) => console.error('[music] yt-dlp tidak ditemukan:', e?.message ?? e));
+
+  const notify = async (st, text) => {
+    const ch = st.textChannelId ? await client.channels.fetch(st.textChannelId).catch(() => null) : null;
+    await ch?.send({ content: text, allowedMentions: { parse: [] } }).catch(() => {});
+  };
 
   const clearTimers = (st) => {
     clearTimeout(st.timer);
     clearTimeout(st.aloneTimer);
   };
 
-  async function destroy(guildId) {
+  function destroy(guildId) {
     const st = states.get(guildId);
     if (!st) return;
     states.delete(guildId);
     clearTimers(st);
     st.queue.clear();
-    await shoukaku.leaveVoiceChannel(guildId).catch(() => {});
+    st.handle?.kill();
+    st.player.removeAllListeners();
+    st.player.stop(true);
+    try {
+      st.connection.destroy();
+    } catch {
+      /* sudah dihancurkan */
+    }
   }
 
-  async function playNext(guildId) {
+  function playNext(guildId) {
     const st = states.get(guildId);
     if (!st) return;
     clearTimeout(st.timer);
+    st.handle?.kill();
+    st.handle = null;
     const track = st.queue.next();
     if (!track) {
       st.timer = setTimeout(() => destroy(guildId), cfg.idleLeaveSec * 1000);
       return;
     }
-    try {
-      await st.player.playTrack({ track: { encoded: track.encoded } });
-    } catch (err) {
-      console.error('[music] gagal memutar:', err?.message ?? err);
-      return playNext(guildId);
-    }
+    const handle = deps.openStream(track.uri, { maxMin: cfg.maxTrackMin });
+    handle.onFail((msg) => {
+      console.error('[music] gagal mengambil audio:', msg);
+      if (st.handle === handle) notify(st, `⚠️ Gagal memutar **${track.title.slice(0, 100)}** (${shortReason(msg)}). Dilewati.`);
+    });
+    const resource = createAudioResource(handle.stream, { inputType: StreamType.Raw, inlineVolume: true });
+    resource.volume.setVolume(st.volume / 100);
+    st.handle = handle;
+    st.resource = resource;
+    st.player.play(resource);
   }
 
-  function wire(guildId, player) {
-    player.on('end', (e) => {
-      // 'replaced'/'stopped' dipicu oleh kita sendiri (skip/stop): jangan maju dua kali.
-      if (e.reason === 'finished' || e.reason === 'loadFailed') playNext(guildId);
+  const shortReason = (msg) => {
+    const m = String(msg).toLowerCase();
+    if (m.includes('sign in') || m.includes('login')) return 'YouTube meminta login';
+    if (m.includes('unavailable') || m.includes('private')) return 'video tidak tersedia';
+    if (m.includes('403') || m.includes('429')) return 'ditolak YouTube';
+    return 'gagal memuat audio';
+  };
+
+  async function createState(guild, voiceChannelId, textChannelId) {
+    const connection = joinVoiceChannel({
+      channelId: voiceChannelId,
+      guildId: guild.id,
+      adapterCreator: guild.voiceAdapterCreator,
+      selfDeaf: true,
     });
-    player.on('stuck', () => playNext(guildId));
-    player.on('exception', async (e) => {
-      console.error('[music] exception:', e?.exception?.message ?? e);
-      // Beri tahu di channel teks, supaya tidak diam saja ketika YouTube menolak.
-      const st = states.get(guildId);
-      const ch = st?.textChannelId ? await client.channels.fetch(st.textChannelId).catch(() => null) : null;
-      const title = e?.track?.info?.title ?? st?.queue.current?.title ?? 'lagu';
-      await ch?.send({ content: `⚠️ Gagal memutar **${title.slice(0, 100)}** (YouTube menolak). Dilewati.`, allowedMentions: { parse: [] } }).catch(() => {});
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+    } catch {
+      connection.destroy();
+      return null;
+    }
+    const player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Pause } });
+    connection.subscribe(player);
+    const st = {
+      connection,
+      player,
+      queue: new TrackQueue(cfg.maxQueue),
+      channelId: voiceChannelId,
+      textChannelId,
+      volume: cfg.defaultVolume,
+      resource: null,
+      handle: null,
+    };
+    states.set(guild.id, st);
+    player.on(AudioPlayerStatus.Idle, () => playNext(guild.id));
+    player.on('error', (e) => console.error('[music] error pemutar:', e?.message ?? e));
+    connection.on(VoiceConnectionStatus.Disconnected, async () => {
+      try {
+        // Dipindah atau reconnect sebentar: tunggu; jika tidak, keluar.
+        await Promise.race([
+          entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+          entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+        ]);
+      } catch {
+        destroy(guild.id);
+      }
     });
-    player.on('closed', (e) => {
-      console.error('[music] koneksi voice ditutup:', e?.code);
-      destroy(guildId);
-    });
+    return st;
   }
 
   const idle = () => ({ status: 'idle' });
@@ -82,41 +134,37 @@ export function createMusic(client, cfg = config.music) {
     state: (guildId) => states.get(guildId),
 
     // Mengembalikan { ok, ... } supaya perintah tinggal menampilkan hasilnya.
-    async enqueue({ guildId, voiceChannelId, shardId, query, requester, textChannelId }) {
+    async enqueue({ guild, voiceChannelId, query, requester, textChannelId }) {
       if (!ready) return { ok: false, reason: 'node_down' };
       const id = toIdentifier(query, cfg.source);
       if (!id.ok) return { ok: false, reason: id.reason };
-      const node = shoukaku.getIdealNode();
-      if (!node) return { ok: false, reason: 'node_down' };
 
-      let result;
+      let entries;
       try {
-        result = await node.rest.resolve(id.identifier);
+        const search = id.isUrl ? id.identifier : id.identifier.replace(/^(yt|sc)search:/, '$1search1:');
+        entries = await deps.resolveEntries(search, { playlist: id.isUrl && isPlaylistUrl(id.identifier) });
       } catch (err) {
-        console.error('[music] resolve gagal:', err?.message ?? err);
+        console.error('[music] pencarian gagal:', err?.message ?? err);
         return { ok: false, reason: 'load_error' };
       }
-      const { tracks, skipped, error } = pickTracks(result, {
+      const { tracks, skipped, error } = filterTracks(entries, {
         maxTrackMs: cfg.maxTrackMin * 60_000,
-        isUrl: id.isUrl,
         requester,
+        single: !id.isUrl,
       });
       if (error) return { ok: false, reason: error, skipped };
 
-      let st = states.get(guildId);
+      let st = states.get(guild.id);
       if (st && st.channelId !== voiceChannelId) return { ok: false, reason: 'other_channel' };
       if (!st) {
-        const player = await shoukaku.joinVoiceChannel({ guildId, channelId: voiceChannelId, shardId, deaf: true });
-        await player.setGlobalVolume(cfg.defaultVolume).catch(() => {});
-        st = { player, queue: new TrackQueue(cfg.maxQueue), channelId: voiceChannelId, volume: cfg.defaultVolume };
-        states.set(guildId, st);
-        wire(guildId, player);
+        st = await createState(guild, voiceChannelId, textChannelId);
+        if (!st) return { ok: false, reason: 'voice_failed' };
       }
       if (textChannelId) st.textChannelId = textChannelId;
       const added = st.queue.add(tracks);
       if (!added) return { ok: false, reason: 'queue_full' };
-      const startsNow = !st.queue.current && !st.player.track;
-      if (startsNow) await playNext(guildId);
+      const startsNow = !st.queue.current && st.player.state.status === AudioPlayerStatus.Idle;
+      if (startsNow) playNext(guild.id);
       else clearTimeout(st.timer);
       return { ok: true, added, skipped, first: tracks[0], startsNow, position: st.queue.size };
     },
@@ -125,21 +173,22 @@ export function createMusic(client, cfg = config.music) {
       const st = states.get(guildId);
       if (!st?.queue.current) return idle();
       const skipped = st.queue.current;
-      await playNext(guildId);
+      st.player.stop(true); // memicu Idle -> lagu berikutnya
       return { status: 'ok', skipped };
     },
 
     async stop(guildId) {
       if (!states.has(guildId)) return idle();
-      await destroy(guildId);
+      destroy(guildId);
       return { status: 'ok' };
     },
 
     async togglePause(guildId) {
       const st = states.get(guildId);
       if (!st?.queue.current) return idle();
-      const paused = !st.player.paused;
-      await st.player.setPaused(paused);
+      const paused = st.player.state.status !== AudioPlayerStatus.Paused;
+      if (paused) st.player.pause();
+      else st.player.unpause();
       return { status: 'ok', paused };
     },
 
@@ -147,7 +196,7 @@ export function createMusic(client, cfg = config.music) {
       const st = states.get(guildId);
       if (!st) return idle();
       st.volume = Math.max(0, Math.min(cfg.maxVolume, Math.round(v)));
-      await st.player.setGlobalVolume(st.volume);
+      st.resource?.volume?.setVolume(st.volume / 100);
       return { status: 'ok', volume: st.volume };
     },
 
@@ -162,8 +211,7 @@ export function createMusic(client, cfg = config.music) {
     },
 
     shutdown: async () => {
-      for (const id of [...states.keys()]) await destroy(id);
-      shoukaku.nodes.forEach((n) => n.disconnect?.(1000, 'shutdown'));
+      for (const id of [...states.keys()]) destroy(id);
     },
   };
 }
