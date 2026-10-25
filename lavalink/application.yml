@@ -12,7 +12,7 @@ lavalink:
     sources:
       youtube: false # dimatikan: digantikan plugin di atas
       bandcamp: false
-      soundcloud: false
+      soundcloud: true # dipakai jika MUSIC_SOURCE=soundcloud (tanpa login)
       twitch: false
       vimeo: false
       nico: false

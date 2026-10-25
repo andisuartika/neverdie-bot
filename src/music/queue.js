@@ -1,10 +1,15 @@
 // Logika murni (tanpa Discord/Lavalink) supaya mudah diuji.
 
-const HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be']);
+const HOSTS = new Set([
+  'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be',
+  'soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com', 'on.soundcloud.com',
+]);
 
 // Mengembalikan { ok, identifier } untuk dikirim ke Lavalink, atau { ok:false, reason }.
-// Hanya YouTube yang diterima: tautan lain ditolak (mencegah bot dipakai membuka alamat sembarang).
-export function toIdentifier(input) {
+// Hanya YouTube dan SoundCloud yang diterima: tautan lain ditolak (mencegah bot dipakai membuka alamat sembarang).
+// source: 'youtube' (ytsearch) atau 'soundcloud' (scsearch) untuk pencarian judul.
+export function toIdentifier(input, source = 'youtube') {
+  const prefix = source === 'soundcloud' ? 'scsearch' : 'ytsearch';
   const q = String(input ?? '').trim();
   if (!q) return { ok: false, reason: 'empty' };
   if (/^https?:\/\//i.test(q)) {
@@ -17,7 +22,7 @@ export function toIdentifier(input) {
     if (!HOSTS.has(u.hostname.toLowerCase())) return { ok: false, reason: 'not_youtube' };
     return { ok: true, identifier: u.toString(), isUrl: true };
   }
-  return { ok: true, identifier: `ytsearch:${q.slice(0, 200)}`, isUrl: false };
+  return { ok: true, identifier: `${prefix}:${q.slice(0, 200)}`, isUrl: false };
 }
 
 export const fmtDuration = (ms) => {

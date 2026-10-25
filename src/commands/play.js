@@ -9,7 +9,7 @@ export const data = new SlashCommandBuilder()
 
 const REASONS = {
   node_down: 'Pemutar musik sedang tidak tersedia. Coba lagi sebentar lagi.',
-  not_youtube: 'Hanya tautan YouTube yang didukung. Atau ketik judul lagunya.',
+  not_youtube: 'Hanya tautan YouTube atau SoundCloud yang didukung. Atau ketik judul lagunya.',
   bad_url: 'Tautannya tidak valid.',
   empty: 'Lagu tidak ditemukan. Coba judul yang lain.',
   filtered: 'Lagu tidak bisa dimasukkan (siaran langsung atau terlalu panjang).',

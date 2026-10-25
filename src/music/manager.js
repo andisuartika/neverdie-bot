@@ -84,7 +84,7 @@ export function createMusic(client, cfg = config.music) {
     // Mengembalikan { ok, ... } supaya perintah tinggal menampilkan hasilnya.
     async enqueue({ guildId, voiceChannelId, shardId, query, requester, textChannelId }) {
       if (!ready) return { ok: false, reason: 'node_down' };
-      const id = toIdentifier(query);
+      const id = toIdentifier(query, cfg.source);
       if (!id.ok) return { ok: false, reason: id.reason };
       const node = shoukaku.getIdealNode();
       if (!node) return { ok: false, reason: 'node_down' };

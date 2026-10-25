@@ -9,6 +9,8 @@ test('toIdentifier: judul jadi ytsearch, hanya YouTube yang lolos', () => {
   assert.equal(toIdentifier('http://169.254.169.254/x').reason, 'not_youtube');
   assert.equal(toIdentifier('https://evilyoutube.com/x').reason, 'not_youtube');
   assert.equal(toIdentifier('   ').reason, 'empty');
+  assert.equal(toIdentifier('hindia', 'soundcloud').identifier, 'scsearch:hindia');
+  assert.equal(toIdentifier('https://soundcloud.com/a/b').ok, true);
   // awalan sumber lain dari pengguna tidak dipercaya
   assert.equal(toIdentifier('scsearch:abc').identifier, 'ytsearch:scsearch:abc');
 });
