@@ -29,26 +29,20 @@ plugins:
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
-    # Urutan = urutan dicoba. Jika semua gagal ("All clients failed"), lihat catatan di bawah.
+    # Urutan = urutan dicoba. YouTube dari IP rumah sering meminta login ("Sign in to confirm
+    # you're not a bot"); TV + OAuth adalah jalur yang paling stabil.
     clients:
+      - TV
       - MUSIC
       - ANDROID_VR
-      - IOS
       - TVHTML5_SIMPLY
-      - ANDROID_MUSIC
-      - MWEB
       - WEB
-      - WEBEMBEDDED
-    # Opsi cadangan jika YouTube menolak semua klien (hapus tanda # untuk memakai):
-    # oauth:
-    #   enabled: true      # login Google (pakai akun CADANGAN, ada risiko akun diblokir)
-    # pot:
-    #   token: "..."
-    #   visitorData: "..."
-    # remoteCipher:
-    #   url: "http://cipher:8001"
-    #   password: "..."
-
+    # Login Google lewat kode perangkat. Nilai diatur dari .env (YT_OAUTH, YT_REFRESH_TOKEN).
+    # PAKAI AKUN GOOGLE CADANGAN, bukan akun utama: ada risiko akun diblokir YouTube.
+    oauth:
+      enabled: ${YT_OAUTH:false}
+      refreshToken: "${YT_REFRESH_TOKEN:}"
+      skipInitialization: ${YT_SKIP_INIT:false}
 logging:
   level:
     root: INFO

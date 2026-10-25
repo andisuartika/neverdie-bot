@@ -37,6 +37,9 @@ services:
     environment:
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-}
       _JAVA_OPTIONS: -Xmx384m
+      YT_OAUTH: ${YT_OAUTH:-false}
+      YT_REFRESH_TOKEN: ${YT_REFRESH_TOKEN:-}
+      YT_SKIP_INIT: ${YT_SKIP_INIT:-false}
     volumes:
       - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
       - lavalink-plugins:/opt/Lavalink/plugins
