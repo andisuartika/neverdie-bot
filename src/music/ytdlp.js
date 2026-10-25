@@ -2,11 +2,11 @@ import { spawn } from 'node:child_process';
 
 const BIN = process.env.YTDLP_BIN || 'yt-dlp';
 const FFMPEG = process.env.FFMPEG_BIN || 'ffmpeg';
-const BASE = ['--no-warnings', '--no-cache-dir', '--js-runtimes', 'node'];
+const BASE = ['--no-warnings', '--no-cache-dir', '--js-runtimes', 'node', '--socket-timeout', '8', '--retries', '3'];
 
 const lastLine = (s) => s.trim().split('\n').filter(Boolean).pop() || '';
 
-function runJson(args, timeoutMs = 30_000) {
+function runJson(args, timeoutMs = 60_000) {
   return new Promise((resolve, reject) => {
     const p = spawn(BIN, [...BASE, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
